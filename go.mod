@@ -6,5 +6,6 @@ replace github.com/techquest-tech/gobatch => ../gobatch
 
 require (
 	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.4.0
 	github.com/techquest-tech/gobatch v0.0.0-00010101000000-000000000000
 )
