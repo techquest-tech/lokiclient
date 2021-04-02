@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	LokiURI = "/loki/api/v1/push"
+	LokiPushURI = "/loki/api/v1/push"
 )
 
 var log = logrus.WithField("component", "lokiClient")
@@ -26,24 +26,24 @@ func deleteInvalidChar(key string) string {
 	return reg.ReplaceAllString(key, "_")
 }
 
-type Config struct {
+type PushConfig struct {
 	URL      string
 	Interval string
 	Batch    uint //Batch Size
 	Retry    uint
 }
 
-type ReqBody struct {
-	Streams []Item `json:"streams"`
+type PushBody struct {
+	Streams []PushItem `json:"streams"`
 }
 
-type Item struct {
+type PushItem struct {
 	Stream map[string]string `json:"stream"`
 	Values [][]string        `json:"values"`
 }
 
-func LokiItem(labs map[string]string, lines ...string) Item {
-	item := Item{
+func NewPushItem(labs map[string]string, lines ...string) PushItem {
+	item := PushItem{
 		Stream: map[string]string{},
 		Values: [][]string{},
 	}
@@ -60,12 +60,12 @@ func LokiItem(labs map[string]string, lines ...string) Item {
 }
 
 //the real func to push data to loki
-func (c Config) lokiJob(ctx context.Context, queue []interface{}) error {
-	items := ReqBody{
-		Streams: []Item{},
+func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
+	items := PushBody{
+		Streams: []PushItem{},
 	}
 	for _, q := range queue {
-		item, ok := q.(Item)
+		item, ok := q.(PushItem)
 		if !ok {
 			log.Fatalf("Data type error, %T", item)
 		}
@@ -77,7 +77,7 @@ func (c Config) lokiJob(ctx context.Context, queue []interface{}) error {
 	if err != nil {
 		log.Fatal("marshal request body failed. err ", err)
 	}
-	url := c.URL + LokiURI
+	url := c.URL + LokiPushURI
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(rawBody))
 	if err != nil {
 		log.Fatal("create http request failed. err ", err)
@@ -111,7 +111,7 @@ func (c Config) lokiJob(ctx context.Context, queue []interface{}) error {
 	}
 }
 
-func (c Config) NewClient(ctx context.Context) (chan interface{}, error) {
+func (c PushConfig) NewClient(ctx context.Context) (chan interface{}, error) {
 	timeout, err := time.ParseDuration(c.Interval)
 	if err != nil {
 		return nil, err

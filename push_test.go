@@ -11,10 +11,10 @@ import (
 )
 
 func TestClient(t *testing.T) {
-	c := lokiclient.Config{
+	c := lokiclient.PushConfig{
 		URL:      "http://127.0.0.1:3100",
-		Interval: "10s",
-		Batch:    10,
+		Interval: "1s",
+		Batch:    99,
 		Retry:    5,
 	}
 	ctx, canel := context.WithTimeout(context.TODO(), 10*time.Second)
@@ -31,7 +31,7 @@ func TestClient(t *testing.T) {
 	}
 
 	for i := 1; i <= 100; i++ {
-		batch <- lokiclient.LokiItem(labs, fmt.Sprintf("it is %d message", i))
+		batch <- lokiclient.NewPushItem(labs, fmt.Sprintf("it is %d message", i))
 	}
 
 	time.Sleep(12 * time.Second)
