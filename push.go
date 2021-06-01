@@ -2,6 +2,7 @@ package lokiclient
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 const (
 	LokiPushURI = "/loki/api/v1/push"
+	// GzipEnabled = true
 )
 
 var log = logrus.WithField("component", "lokiClient")
@@ -31,6 +33,7 @@ type PushConfig struct {
 	Interval string
 	Batch    uint //Batch Size
 	Retry    uint
+	Gzip     bool
 }
 
 type PushBody struct {
@@ -74,17 +77,35 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 
 	rawBody, err := json.Marshal(items)
 
+	if c.Gzip {
+		buf := bytes.Buffer{}
+		zw := gzip.NewWriter(&buf)
+		rawSize, err := zw.Write(rawBody)
+		if err != nil {
+			return err
+		}
+		err = zw.Close()
+		if err != nil {
+			return err
+		}
+		log.Info("req body raw/zipped size: ", rawSize, "/", buf.Len())
+		rawBody = buf.Bytes()
+	}
+
 	if err != nil {
 		log.Fatal("marshal request body failed. err ", err)
 	}
 	url := c.URL + LokiPushURI
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(rawBody))
 	if err != nil {
 		log.Fatal("create http request failed. err ", err)
 	}
 
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Content-Encoding", "gzip")
+	if c.Gzip {
+		req.Header.Add("Content-Encoding", "gzip")
+	}
 
 	client := http.Client{}
 	resp, err := client.Do(req)

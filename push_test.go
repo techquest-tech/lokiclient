@@ -14,8 +14,9 @@ func TestClient(t *testing.T) {
 	c := lokiclient.PushConfig{
 		URL:      "http://127.0.0.1:3100",
 		Interval: "1s",
-		Batch:    99,
+		Batch:    150,
 		Retry:    5,
+		Gzip:     true,
 	}
 	ctx, canel := context.WithTimeout(context.TODO(), 10*time.Second)
 	defer canel()
@@ -30,7 +31,7 @@ func TestClient(t *testing.T) {
 		// "&1234": "should not ok",
 	}
 
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 200; i++ {
 		batch <- lokiclient.NewPushItem(labs, fmt.Sprintf("it is %d message", i))
 	}
 
