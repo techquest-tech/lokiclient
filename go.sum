@@ -10,8 +10,8 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
-github.com/techquest-tech/gobatch v0.0.2 h1:y1FF/dV7G5cekN8E4tFpiin4e5rmqCoZRjm/n8il2ss=
-github.com/techquest-tech/gobatch v0.0.2/go.mod h1:PdoP5m4K/NFPLuEuqYCOPUm168x2May2rIScTqOdgto=
+github.com/techquest-tech/gobatch v0.0.3 h1:p8CMVZ5JoSMM9k5EaveXi3wZK40NZgoU8R3J1ngiAA0=
+github.com/techquest-tech/gobatch v0.0.3/go.mod h1:PdoP5m4K/NFPLuEuqYCOPUm168x2May2rIScTqOdgto=
 golang.org/x/sys v0.0.0-20191026070338-33540a1f6037/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191220142924-d4481acd189f h1:68K/z8GLUxV76xGSqwTWw2gyk/jwn79LUL43rES2g8o=
 golang.org/x/sys v0.0.0-20191220142924-d4481acd189f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
