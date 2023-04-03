@@ -11,8 +11,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/techquest-tech/gobatch"
+	"go.uber.org/zap"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	// GzipEnabled = true
 )
 
-var log = logrus.WithField("component", "lokiClient")
+var log = zap.L().With(zap.String("component", "lokiclient"))
 
 var reg = regexp.MustCompile("[^a-zA-Z0-9_]")
 
@@ -62,7 +62,7 @@ func NewPushItem(labs map[string]string, lines ...string) PushItem {
 	return item
 }
 
-//the real func to push data to loki
+// the real func to push data to loki
 func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 	items := PushBody{
 		Streams: []PushItem{},
@@ -70,7 +70,11 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 	for _, q := range queue {
 		item, ok := q.(PushItem)
 		if !ok {
-			log.Fatalf("Data type error, %T", item)
+			// log.Fatalf("Data type error, %T", item)
+			log.Error("Data type error, expected PushItem",
+				zap.String("dataType", fmt.Sprint("%%", q)),
+				zap.Any("data", q),
+			)
 		}
 		items.Streams = append(items.Streams, item)
 	}
@@ -80,7 +84,7 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 	if c.Gzip {
 		buf := bytes.Buffer{}
 		zw := gzip.NewWriter(&buf)
-		rawSize, err := zw.Write(rawBody)
+		_, err := zw.Write(rawBody)
 		if err != nil {
 			return err
 		}
@@ -88,18 +92,18 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 		if err != nil {
 			return err
 		}
-		log.Info("req body raw/zipped size: ", rawSize, "/", buf.Len())
+		// log.Info("req body raw/zipped size: ", rawSize, "/", buf.Len())
 		rawBody = buf.Bytes()
 	}
 
 	if err != nil {
-		log.Fatal("marshal request body failed. err ", err)
+		log.Error("marshal request body failed. err ", zap.Error(err))
 	}
 	url := c.URL + LokiPushURI
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(rawBody))
 	if err != nil {
-		log.Fatal("create http request failed. err ", err)
+		log.Error("create http request failed. err ", zap.Error(err))
 	}
 
 	req.Header.Add("Content-Type", "application/json")
@@ -111,23 +115,27 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		log.Errorf("request to %s failed. err %v", url, err)
+		// log.Errorf("request to %s failed. err %v", url, err)
+		log.Error("request Loki server failed.", zap.String("url", url), zap.Error(err))
 		return err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Error("read http resp failed. err :", err)
+		// log.Error("read http resp failed. err :", err)
+		log.Error("read resp failed.", zap.Error(err))
 		return err
 	}
 
 	switch {
 	case resp.StatusCode < 200, resp.StatusCode > 300:
 		err = fmt.Errorf("http return error, status code = %d, %s. %s", resp.StatusCode, resp.Status, string(body))
-		log.Error(err)
+		// log.Error(err)
+		log.Error("loki server reply none 200", zap.Int("statusCode", resp.StatusCode),
+			zap.String("status", resp.Status))
 		return err
 	default:
-		log.Info("post to loki done. resp:", string(body))
+		log.Debug("post to loki done.", zap.ByteString("resp", body))
 		return nil
 	}
 }
