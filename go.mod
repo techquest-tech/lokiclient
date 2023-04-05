@@ -6,6 +6,6 @@ go 1.16
 
 require (
 	github.com/stretchr/testify v1.8.0
-	github.com/techquest-tech/gobatch v0.1.3
+	github.com/techquest-tech/gobatch v0.1.4
 	go.uber.org/zap v1.24.0
 )
