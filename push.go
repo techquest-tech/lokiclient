@@ -30,6 +30,8 @@ func deleteInvalidChar(key string) string {
 
 type PushConfig struct {
 	URL      string
+	User     string
+	Password string
 	Interval string
 	Batch    uint //Batch Size
 	Retry    uint
@@ -109,6 +111,10 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 	req.Header.Add("Content-Type", "application/json")
 	if c.Gzip {
 		req.Header.Add("Content-Encoding", "gzip")
+	}
+
+	if c.User != "" {
+		req.SetBasicAuth(c.User, c.Password)
 	}
 
 	client := http.Client{}
