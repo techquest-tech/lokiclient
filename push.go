@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"time"
@@ -39,7 +39,7 @@ type PushConfig struct {
 }
 
 type PushBody struct {
-	Streams []PushItem `json:"streams"`
+	Streams []*PushItem `json:"streams"`
 }
 
 type PushItem struct {
@@ -47,8 +47,8 @@ type PushItem struct {
 	Values [][]string        `json:"values"`
 }
 
-func NewPushItem(labs map[string]string, lines ...string) PushItem {
-	item := PushItem{
+func NewPushItem(labs map[string]string, lines ...string) *PushItem {
+	item := &PushItem{
 		Stream: map[string]string{},
 		Values: [][]string{},
 	}
@@ -67,10 +67,10 @@ func NewPushItem(labs map[string]string, lines ...string) PushItem {
 // the real func to push data to loki
 func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 	items := PushBody{
-		Streams: []PushItem{},
+		Streams: []*PushItem{},
 	}
 	for _, q := range queue {
-		item, ok := q.(PushItem)
+		item, ok := q.(*PushItem)
 		if !ok {
 			// log.Fatalf("Data type error, %T", item)
 			log.Error("Data type error, expected PushItem",
@@ -126,7 +126,7 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 		return err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body) //ioutil.ReadAll(resp.Body)
 	if err != nil {
 		// log.Error("read http resp failed. err :", err)
 		log.Error("read resp failed.", zap.Error(err))
