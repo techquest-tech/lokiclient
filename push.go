@@ -49,8 +49,8 @@ type PushItem struct {
 
 func NewPushItem(labs map[string]string, lines ...string) *PushItem {
 	item := &PushItem{
-		Stream: map[string]string{},
-		Values: [][]string{},
+		Stream: make(map[string]string, len(labs)),
+		Values: make([][]string, 0, len(lines)),
 	}
 	for k, v := range labs {
 		item.Stream[deleteInvalidChar(k)] = v
@@ -72,40 +72,45 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 	for _, q := range queue {
 		item, ok := q.(*PushItem)
 		if !ok {
-			// log.Fatalf("Data type error, %T", item)
 			log.Error("Data type error, expected PushItem",
-				zap.String("dataType", fmt.Sprint("%%", q)),
+				zap.String("dataType", fmt.Sprintf("%T", q)),
 				zap.Any("data", q),
 			)
+			return fmt.Errorf("data type error, expected *PushItem, got %T", q)
 		}
 		items.Streams = append(items.Streams, item)
 	}
 
 	rawBody, err := json.Marshal(items)
+	items.Streams = nil
+
+	if err != nil {
+		log.Error("marshal request body failed. err ", zap.Error(err))
+		return err
+	}
 
 	if c.Gzip {
-		buf := bytes.Buffer{}
-		zw := gzip.NewWriter(&buf)
+		buf := &bytes.Buffer{}
+		zw := gzip.NewWriter(buf)
 		_, err := zw.Write(rawBody)
 		if err != nil {
+			log.Error("gzip write failed. err ", zap.Error(err))
 			return err
 		}
 		err = zw.Close()
 		if err != nil {
+			log.Error("gzip close failed. err ", zap.Error(err))
 			return err
 		}
-		// log.Info("req body raw/zipped size: ", rawSize, "/", buf.Len())
 		rawBody = buf.Bytes()
 	}
 
-	if err != nil {
-		log.Error("marshal request body failed. err ", zap.Error(err))
-	}
 	url := c.URL + LokiPushURI
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(rawBody))
 	if err != nil {
 		log.Error("create http request failed. err ", zap.Error(err))
+		return err
 	}
 
 	req.Header.Add("Content-Type", "application/json")
@@ -119,28 +124,25 @@ func (c PushConfig) lokiJob(ctx context.Context, queue []interface{}) error {
 
 	client := http.Client{}
 	resp, err := client.Do(req)
-
 	if err != nil {
-		// log.Errorf("request to %s failed. err %v", url, err)
 		log.Error("request Loki server failed.", zap.String("url", url), zap.Error(err))
 		return err
 	}
 
-	body, err := io.ReadAll(resp.Body) //ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		// log.Error("read http resp failed. err :", err)
-		log.Error("read resp failed.", zap.Error(err))
+		log.Error("read resp failed. err ", zap.Error(err))
 		return err
 	}
 
-	switch {
-	case resp.StatusCode < 200, resp.StatusCode > 300:
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		err = fmt.Errorf("http return error, status code = %d, %s. %s", resp.StatusCode, resp.Status, string(body))
-		// log.Error(err)
 		log.Error("loki server reply none 200", zap.Int("statusCode", resp.StatusCode),
 			zap.String("status", resp.Status))
 		return err
-	default:
+	} else {
 		log.Debug("post to loki done.", zap.ByteString("resp", body))
 		return nil
 	}
